@@ -1,0 +1,36 @@
+// What to import
+const axios = require('axios');
+const { HttpsProxyAgent } = require('https-proxy-agent');
+
+// Get the proxies from proxies.txt, one per line
+const proxiesFile = fs.readFileSync('proxies.txt', 'utf8');
+const proxies = proxiesFile.split('\n').filter(line => line.trim() !== '').map(line => {
+    // split proxy into parts assuming it is ip:port:user:pass
+    const [host, port, username, password] = line.split(':');
+    return {
+        host: host,
+        port: port,
+        username: username,
+        password: password
+        };
+    });
+// Get the next proxy from the list. Will cycle back to the beginning once it reaches the end
+function* proxyGenerator(proxies) {
+    let index = 0;
+    while (true) {
+        yield proxies[index];
+
+        index = (index + 1) % proxies.length; 
+    }
+    
+}
+
+// Configuring new proxy for each request
+const getNextProxy = proxyGenerator(proxies);
+const currentProxy = getNextProxy.next().value;
+let { host, port, username, password } = currentProxy;
+// create proxy configuration
+const proxy = new HttpsProxyAgent(`http://${username}:${password}@${host}:${port}`);
+
+// How to use
+axios.get(url, proxy)
